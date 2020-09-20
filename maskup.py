@@ -35,11 +35,18 @@ class MyGame(arcade.Window):
         self.player_list = None
         self.enemy_list = None
         self.virus_list = None
-        self.bullet_list = None
+        self.mask_list = None
 
         # Set up the player
         self.player_sprite = None
         self.physics_engine = None
+        self.health = 100
+        self.health_text = None
+        self.score = 0
+        self.score_text = None
+
+        #set up physics engine for mask
+        self.physics_engine_mask = None
 
     def setup(self):
         """ Set up the game and initialize the variables. """
@@ -49,25 +56,30 @@ class MyGame(arcade.Window):
         self.wall_list = arcade.SpriteList()
         self.enemy_list = arcade.SpriteList()
         self.virus_list = arcade.SpriteList()
-        self.bullet_list = arcade.SpriteList()
+        self.mask_list = arcade.SpriteList()
 
         # Set up the player
-        self.player_sprite = arcade.Sprite("sprite2.png",0.025)
+        self.player_sprite = arcade.Sprite("mask up player.png",0.005)
+        self.score = 0
+        self.health = 100
         self.player_sprite.center_x = 25
         self.player_sprite.center_y = 150
         self.player_list.append(self.player_sprite)
 
+        #set up initial mask
+        self.mask = arcade.Sprite("mask up bullet.png", 0.005)
+
         #set up the enemys
         for i in range(15):
-            enemy = arcade.Sprite("enemy1.png",0.025)
+            enemy = arcade.Sprite("mask up enemy.png",0.007)
             enemy.center_x = random.randint(0,10000)
-            enemy.center_y = 100
+            enemy.center_y = 125
             self.enemy_list.append(enemy)
 
         for i in range(15):
-            enemy = arcade.Sprite("enemy1.png",0.025)
+            enemy = arcade.Sprite("mask up enemy.png",0.007)
             enemy.center_x = random.randint(0,10000)
-            enemy.center_y = 325
+            enemy.center_y = 340
             self.enemy_list.append(enemy)
 
 
@@ -97,7 +109,9 @@ class MyGame(arcade.Window):
 
 
         self.physics_engine = arcade.PhysicsEnginePlatformer(self.player_sprite, self.wall_list, gravity_constant = GRAVITY)
-
+        self.physics_engine_mask = arcade.PhysicsEnginePlatformer(self.mask, self.wall_list, gravity_constant = GRAVITY)
+            
+        
         # Set the background color
         arcade.set_background_color(arcade.color.BLACK)
 
@@ -117,8 +131,14 @@ class MyGame(arcade.Window):
         self.player_list.draw()
         self.enemy_list.draw()
         self.virus_list.draw()
-        self.bullet_list.draw()
+        self.mask_list.draw()
 
+        output1 = f"SCORE: {self.score}"
+        arcade.draw_text(output1, -50, 450, arcade.color.WHITE, 14)
+
+        output2 = f"HEALTH: {self.health}"
+        arcade.draw_text(output2, -50, 400, arcade.color.WHITE, 14)
+        
     def on_key_press(self, key, modifiers):
         """Called whenever a key is pressed. """
 
@@ -130,18 +150,19 @@ class MyGame(arcade.Window):
         elif key == arcade.key.RIGHT:
             self.player_sprite.change_x = MOVEMENT_SPEED
         elif key == arcade.key.SPACE:
-            #Create a mask bullet
-            bullet = arcade.Sprite(":resources:images/space_shooter/laserBlue01.png", SPRITE_SCALING)
+            #Create a mask mask
+            mask = arcade.Sprite("mask up bullet.png", 0.005)
+            self.physics_engine_mask = arcade.PhysicsEnginePlatformer(mask, self.wall_list, gravity_constant = GRAVITY)
+            
+            #Mask mask speed
+            mask.change_x = 20
 
-            #Mask bullet speed
-            bullet.change_x = 2.5
+            #Position mask mask
+            mask.center_x = self.player_sprite.center_x
+            mask.bottom = self.player_sprite.top
 
-            #Position mask bullet
-            bullet.center_x = self.player_sprite.center_x
-            bullet.bottom = self.player_sprite.top
-
-            #Add mask bullet to bullet list
-            self.bullet_list.append(bullet)
+            #Add mask mask to mask list
+            self.mask_list.append(mask)
 
 
     def on_key_release(self, key, modifiers):
@@ -157,24 +178,36 @@ class MyGame(arcade.Window):
 
         # Call update on all sprites
         self.physics_engine.update()
+        self.physics_engine_mask.update()
+        self.enemy_list.update()
+        self.mask_list.update()
+        self.virus_list.update()
 
         # -- manage germs propagating --
-        enemy_hit_list = arcade.check_for_collision_with_list(self.player_sprite, self.enemy_list)
+        for mask in self.mask_list:
+            enemy_hit_list = arcade.check_for_collision_with_list(mask, self.enemy_list)
+            if len(enemy_hit_list) > 0:
+                mask.remove_from_sprite_lists()
 
-        for enemy in self.enemy_list:
-            if enemy in enemy_hit_list:
+            # For every coin we hit, add to the score and remove the coin
+            for enemy in enemy_hit_list:
                 enemy.remove_from_sprite_lists()
+                self.score += 1
 
         #spew a virus from a random enemy
         randomIndex = random.randint(0, len(self.enemy_list)-1)
         enemy = self.enemy_list[randomIndex]
-        virus = arcade.Sprite("sprite1.png", 0.025)
+        virus = arcade.Sprite("mask up germ.png", 0.005)
         virus.center_x = enemy.center_x
         virus.center_y = enemy.center_y
         virus.change_x = random.randint(-5,5)
         virus.change_y = random.randint(1,5)
         self.virus_list.append(virus)
-        self.virus_list.update()
+        
+        #decrement health with every virus hit taken
+        virus_hit_list = arcade.check_for_collision_with_list(self.player_sprite, self.virus_list)
+        self.health -= len(virus_hit_list)
+
 
         # --- Manage Scrolling ---
 
