@@ -2,7 +2,7 @@ import arcade
 import random
 import os
 
-SPRITE_SCALING = 0.5
+SPRITE_SCALING = 0.4
 
 SCREEN_WIDTH = 800
 SCREEN_HEIGHT = 600
@@ -44,6 +44,7 @@ class MyGame(arcade.Window):
         self.health_text = None
         self.score = 0
         self.score_text = None
+        self.game_over = False
 
         #set up physics engine for mask
         self.physics_engine_mask = None
@@ -134,10 +135,10 @@ class MyGame(arcade.Window):
         self.mask_list.draw()
 
         output1 = f"SCORE: {self.score}"
-        arcade.draw_text(output1, -50, 450, arcade.color.WHITE, 14)
+        arcade.draw_text(output1, self.view_left + 10, self.view_bottom + 575, arcade.color.WHITE, 14)
 
         output2 = f"HEALTH: {self.health}"
-        arcade.draw_text(output2, -50, 400, arcade.color.WHITE, 14)
+        arcade.draw_text(output2, self.view_left + 10, self.view_bottom + 550, arcade.color.WHITE, 14)
         
     def on_key_press(self, key, modifiers):
         """Called whenever a key is pressed. """
@@ -176,37 +177,43 @@ class MyGame(arcade.Window):
     def on_update(self, delta_time):
         """ Movement and game logic """
 
-        # Call update on all sprites
-        self.physics_engine.update()
-        self.physics_engine_mask.update()
-        self.enemy_list.update()
-        self.mask_list.update()
-        self.virus_list.update()
+        if not self.game_over:
 
-        # -- manage germs propagating --
-        for mask in self.mask_list:
-            enemy_hit_list = arcade.check_for_collision_with_list(mask, self.enemy_list)
-            if len(enemy_hit_list) > 0:
-                mask.remove_from_sprite_lists()
+            # Call update on all sprites
+            self.physics_engine.update()
+            self.physics_engine_mask.update()
+            self.enemy_list.update()
+            self.mask_list.update()
+            self.virus_list.update()
 
-            # For every coin we hit, add to the score and remove the coin
-            for enemy in enemy_hit_list:
-                enemy.remove_from_sprite_lists()
-                self.score += 1
+            # -- manage germs propagating --
+            for mask in self.mask_list:
+                enemy_hit_list = arcade.check_for_collision_with_list(mask, self.enemy_list)
+                if len(enemy_hit_list) > 0:
+                    mask.remove_from_sprite_lists()
 
-        #spew a virus from a random enemy
-        randomIndex = random.randint(0, len(self.enemy_list)-1)
-        enemy = self.enemy_list[randomIndex]
-        virus = arcade.Sprite("mask up germ.png", 0.005)
-        virus.center_x = enemy.center_x
-        virus.center_y = enemy.center_y
-        virus.change_x = random.randint(-5,5)
-        virus.change_y = random.randint(1,5)
-        self.virus_list.append(virus)
-        
-        #decrement health with every virus hit taken
-        virus_hit_list = arcade.check_for_collision_with_list(self.player_sprite, self.virus_list)
-        self.health -= len(virus_hit_list)
+                # For every coin we hit, add to the score and remove the coin
+                for enemy in enemy_hit_list:
+                    enemy.remove_from_sprite_lists()
+                    self.score += 1
+
+            #spew a virus from a random enemy
+            randomIndex = random.randint(0, len(self.enemy_list)-1)
+            enemy = self.enemy_list[randomIndex]
+            virus = arcade.Sprite("mask up germ.png", 0.005)
+            virus.center_x = enemy.center_x
+            virus.center_y = enemy.center_y
+            virus.change_x = random.randint(-5,5)
+            virus.change_y = random.randint(1,5)
+            self.virus_list.append(virus)
+            
+            #decrement health with every virus hit taken
+            virus_hit_list = arcade.check_for_collision_with_list(self.player_sprite, self.virus_list)
+            self.health -= len(virus_hit_list)
+
+            #game ends if health reaches 0
+            if self.health == 0:
+                self.game_over = True
 
 
         # --- Manage Scrolling ---
@@ -261,5 +268,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-
 
